@@ -105,80 +105,112 @@
   </div>
 
 <script>
-// --- Global State & Element Refs ---
-const $ = (id) => document.getElementById(id);
-let currentObjectURL=null, processedBlob=null, origFile=null, originalBitmap=null;
-let tg = window.Telegram?.WebApp;
+    // --- Global State & Element Refs ---
+    const $ = (id) => document.getElementById(id);
+    let currentObjectURL = null, processedBlob = null, origFile = null, originalBitmap = null;
+    let tg = window.Telegram?.WebApp; // Safely access the Telegram object
 
-const dropArea=$('dropArea'),fileInput=$('fileInput'),processBtn=$('processBtn'),downloadBtn=$('downloadBtn'),installBtn=$('installBtn');
-const progress=$('progress'),progressWrap=$('progressWrap');
-const origImg=$('origImg'),origPlaceholder=$('origPlaceholder'),origSize=$('origSize'),origDims=$('origDims'),origType=$('origType');
-const resImg=$('resImg'),resPlaceholder=$('resPlaceholder'),resSize=$('resSize'),resRatio=$('resRatio'),resType=$('resType');
-const targetSizeInput=$('targetSize'),formatSelect=$('format');
-const prioritySizeBtn=$('prioritySize'),priorityQualityBtn=$('priorityQuality');
-const sizePriorityControls=$('sizePriorityControls'),qualityPriorityControls=$('qualityPriorityControls');
-const qualitySlider=$('qualitySlider'),qualityValue=$('qualityValue');
-const bgRemove=$('bgRemove'),bgColorToggle=$('bgColorToggle'),bgColorPicker=$('bgColorPicker');
+    // --- All Element References ---
+    const dropArea=$('dropArea'),fileInput=$('fileInput'),processBtn=$('processBtn'),downloadBtn=$('downloadBtn'),installBtn=$('installBtn');
+    const progress=$('progress'),progressWrap=$('progressWrap');
+    const origImg=$('origImg'),origPlaceholder=$('origPlaceholder'),origSize=$('origSize'),origDims=$('origDims'),origType=$('origType');
+    const resImg=$('resImg'),resPlaceholder=$('resPlaceholder'),resSize=$('resSize'),resRatio=$('resRatio'),resType=$('resType');
+    const targetSizeInput=$('targetSize'),formatSelect=$('format');
+    const prioritySizeBtn=$('prioritySize'),priorityQualityBtn=$('priorityQuality');
+    const sizePriorityControls=$('sizePriorityControls'),qualityPriorityControls=$('qualityPriorityControls');
+    const qualitySlider=$('qualitySlider'),qualityValue=$('qualityValue');
+    const bgRemove=$('bgRemove'),bgColorToggle=$('bgColorToggle'),bgColorPicker=$('bgColorPicker');
 
-// --- Core App Logic (unchanged) ---
-function setPriority(mode){const t=mode==='size';prioritySizeBtn.classList.toggle('active',t),priorityQualityBtn.classList.toggle('active',!t),sizePriorityControls.style.display=t?'block':'none',qualityPriorityControls.style.display=t?'none':'block',handleFormatChange()}
-function handleFormatChange(){const t=priorityQualityBtn.classList.contains('active'),e=formatSelect.value==='png';qualitySlider.disabled=t&&e,qualityValue.style.opacity=qualitySlider.disabled?.5:1}
-async function setOriginalFile(t){originalBitmap&&originalBitmap.close();try{originalBitmap=await createImageBitmap(t)}catch(t){return void showTemporaryNote("Error: Unsupported or corrupt file.",4E3)}origFile=t,currentObjectURL&&URL.revokeObjectURL(currentObjectURL),currentObjectURL=URL.createObjectURL(t),origImg.src=currentObjectURL,origImg.style.display='block',origPlaceholder.style.display='none',origSize.textContent=(t.size/1024).toFixed(1)+' KB',origType.textContent=t.type.replace('image/','').toUpperCase()||'IMAGE',origDims.textContent=originalBitmap.width+'×'+originalBitmap.height,clearResult();tg?.MainButton.setText("Compress Image").show()}
-async function coreProcessImage(){if(!origFile||!originalBitmap)return void alert('Please choose a valid image first');processBtn.disabled=!0,downloadBtn.disabled=!0,processedBlob=null,resImg.style.display='none',resPlaceholder.textContent='Processing…',progressWrap.style.display='block',setProgress(6),resSize.style.color='var(--text)',resRatio.style.color='var(--success)';try{const t=formatSelect.value||'webp',e={removeBg:bgRemove.classList.contains('active'),bgColor:bgColorToggle.checked?bgColorPicker.value:null,progressCallback:setProgress};let o;if(prioritySizeBtn.classList.contains('active')){const i=Math.max(1,Math.round(Number(targetSizeInput.value)||0))*1024;o=await compressToTargetWithScale(i,t,e),o.size>i&&(showTemporaryNote('Could not meet target size.',4E3),resSize.style.color='var(--danger)',resRatio.style.color='var(--danger)')}else{const i=parseInt(qualitySlider.value,10)/100;o=await compressWithQualityPriority(i,t,e)}if(!o)throw new Error('Compression failed.');processedBlob=o,displayResult(o)}catch(t){resPlaceholder.textContent='Error: '+(t.message||t),tg?.HapticFeedback.notificationOccurred('error')}finally{processBtn.disabled=!1,setTimeout(()=>{progressWrap.style.display='none',setProgress(0)},700)}}
-async function compressWithQualityPriority(t,e,o){return o.progressCallback(25),await encodeCanvasBitmap(originalBitmap,originalBitmap.width,originalBitmap.height,e,t,o)}
-async function compressToTargetWithScale(t,e,o){const{progressCallback:i}=o,r=originalBitmap.width,n=originalBitmap.height;i(20);let a=await binarySearchQuality(originalBitmap,r,n,t,e,o);if(a&&a.size<=t)return a;let s=.95;for(let l=0;l<15;l++){i(30+Math.min(60,4*l));const c=Math.max(1,Math.round(r*s)),d=Math.max(1,Math.round(n*s)),p=await binarySearchQuality(originalBitmap,c,d,t,e,o);if(p&&(a&&p.size>=a.size||(a=p)),a&&a.size<=t)return a;if(c<=128||d<=128)break;const u=a?a.size/t:2;s*=.9<u?1.5:.85}if(a)return a;throw new Error('Could not generate an image.')}
-async function binarySearchQuality(t,e,o,i,r,n){if('png'===r)return await encodeCanvasBitmap(t,e,o,r,.9,n);let a,s=.01,l=1;for(let c=0;c<8;c++){const d=(s+l)/2,p=await encodeCanvasBitmap(t,e,o,r,d,n);if(!p)break;p.size<=i?(a=p,s=d):l=d}return a}
-async function encodeCanvasBitmap(t,e,o,i,r=.9,n={}){const{bgColor:a=null,removeBg:s=!1}=n,l=document.createElement('canvas');l.width=e,l.height=o;const c=l.getContext('2d');if(a&&!s&&(c.fillStyle=a,c.fillRect(0,0,e,o)),c.drawImage(t,0,0,e,o),s)try{const d=c.getImageData(0,0,e,o);let p=0,u=0,m=0;[[0,0],[e-1,0],[0,o-1],[e-1,o-1]].forEach(([t,i])=>{const r=(i*e+t)*4;p+=d.data[r],u+=d.data[r+1],m+=d.data[r+2]}),p/=4,u/=4,m/=4;const g=30;for(let f=0;f<d.data.length;f+=4)Math.abs(d.data[f]-p)<g&&Math.abs(d.data[f+1]-u)<g&&Math.abs(d.data[f+2]-m)<g&&(d.data[f+3]=0);c.putImageData(d,0,0)}catch(t){}const h='jpeg'===i?'image/jpeg':'png'===i?'image/png':'image/webp';return new Promise(t=>l.toBlob(t,h,r))}
-function coreDisplayResult(t){currentObjectURL&&URL.revokeObjectURL(currentObjectURL),currentObjectURL=URL.createObjectURL(t),resImg.src=currentObjectURL,resImg.style.display='block',resPlaceholder.style.display='none',resSize.textContent=(t.size/1024).toFixed(1)+' KB',resType.textContent=t.type.replace('image/','').toUpperCase();const e=(origFile.size-t.size)/origFile.size*100;resRatio.textContent=(e>-1/0?e.toFixed(1):0)+'%',downloadBtn.disabled=!1,setProgress(100)}
-function coreDownloadResult(){if(!processedBlob||!origFile)return;let t;const e=(origFile.name.split('.').slice(0,-1).join('')||'image').replace(/[^a-zA-Z0-9]/g,'-'),o=formatSelect.value==='jpeg'?'jpg':formatSelect.value;if(prioritySizeBtn.classList.contains('active'))t=`${e}-Compressed-${targetSizeInput.value}KB.${o}`;else{let i=tg?.initDataUnsafe?.user?.first_name||'';i&&(t=`${e}-for-${i}-Q${qualitySlider.value}.${o}`),t||(t=`${e}-Compressed-Q${qualitySlider.value}.${o}`)}const i=document.createElement('a');i.href=URL.createObjectURL(processedBlob),i.download=t,i.click(),i.remove(),URL.revokeObjectURL(i.href)}
-function clearResult(){processedBlob=null,resImg.src='',resImg.style.display='none',resPlaceholder.style.display='block',resPlaceholder.textContent='Awaiting compression',resSize.textContent='—',resType.textContent='—',resRatio.textContent='—',downloadBtn.disabled=!0,resSize.style.color='var(--text)',resRatio.style.color='var(--success)'}
-function setProgress(t){progress.style.width=Math.max(0,Math.min(100,t))+'%'}
-function showTemporaryNote(t,e=3E3){const o=document.createElement('div');o.textContent=t,o.style.cssText="position:fixed;left:50%;transform:translateX(-50%);bottom:28px;background:#222;backdrop-filter:blur(5px);color:white;padding:10px 16px;border-radius:8px;font-size:14px;z-index:9999;font-family:'Karma',system-ui,sans-serif;border:1px solid var(--stroke);",document.body.appendChild(o),setTimeout(()=>o.remove(),e)}
+    // --- Functions to be wrapped/modified by Telegram integration ---
+    let processImage = coreProcessImage;
+    let displayResult = coreDisplayResult;
+    let downloadResult = coreDownloadResult;
 
-// --- PWA & Telegram Integration Layer ---
-let processImage = coreProcessImage;
-let displayResult = coreDisplayResult;
-let downloadResult = coreDownloadResult;
+    // --- Event Listeners ---
+    dropArea.addEventListener('click',()=>fileInput.click());
+    fileInput.addEventListener('change', t=>t.target.files&&t.target.files[0]&&setOriginalFile(t.target.files[0]));
+    dropArea.addEventListener('dragover', t=>{t.preventDefault(),dropArea.classList.add('drag')});
+    dropArea.addEventListener('dragleave', t=>{dropArea.classList.remove('drag')});
+    dropArea.addEventListener('drop', t=>{t.preventDefault(),dropArea.classList.remove('drag'),t.dataTransfer.files[0]&&setOriginalFile(t.dataTransfer.files[0])});
+    processBtn.addEventListener('click', () => processImage()); // Wrap in anonymous func to ensure correct 'this'
+    downloadBtn.addEventListener('click',() => downloadResult());
+    qualitySlider.addEventListener('input',()=>{qualityValue.textContent=qualitySlider.value});
+    prioritySizeBtn.addEventListener('click',()=>setPriority('size'));
+    priorityQualityBtn.addEventListener('click',()=>setPriority('quality'));
+    formatSelect.addEventListener('change',handleFormatChange);
+    bgRemove.addEventListener('click',()=>bgRemove.classList.toggle('active'));
 
-function initializeTelegramIntegration(){
-  if (tg && tg.platform !== 'unknown') {
-    tg.ready();
-    
-    // --- UI & Theme ---
-    const setTheme = () => { document.body.style.backgroundColor = tg.themeParams.bg_color || '#111111'; };
-    tg.onEvent('themeChanged', setTheme);
-    setTheme();
+    // --- UI Logic ---
+    function setPriority(mode){const t=mode==='size';prioritySizeBtn.classList.toggle('active',t);priorityQualityBtn.classList.toggle('active',!t);sizePriorityControls.style.display=t?'block':'none';qualityPriorityControls.style.display=t?'none':'block';handleFormatChange();}
+    function handleFormatChange(){const t=priorityQualityBtn.classList.contains('active'),e=formatSelect.value==='png';qualitySlider.disabled=t&&e;qualityValue.style.opacity=qualitySlider.disabled?0.5:1;}
+    async function setOriginalFile(file){if(originalBitmap)originalBitmap.close();try{originalBitmap=await createImageBitmap(file)}catch(err){showTemporaryNote("Error: Unsupported or corrupt file.",4000);return}origFile=file;if(currentObjectURL)URL.revokeObjectURL(currentObjectURL);currentObjectURL=URL.createObjectURL(file);origImg.src=currentObjectURL;origImg.style.display='block';origPlaceholder.style.display='none';origSize.textContent=(file.size/1024).toFixed(1)+' KB';origType.textContent=file.type.replace('image/','').toUpperCase()||'IMAGE';origDims.textContent=originalBitmap.width+'×'+originalBitmap.height;clearResult();if(tg?.MainButton){tg.MainButton.setText("Compress Image").enable()}}
 
-    processBtn.style.display = 'none'; // Hide original button
-    tg.MainButton.setText("Select an Image").disable().show();
-    tg.onEvent('mainButtonClicked', () => { tg.HapticFeedback.impactOccurred('medium'); processImage(); });
+    // --- CORE COMPRESSION LOGIC (UNCHANGED) ---
+    async function coreProcessImage(){if(!origFile||!originalBitmap)return alert('Please choose a valid image first');processBtn.disabled=true;downloadBtn.disabled=true;processedBlob=null;resImg.style.display='none';resPlaceholder.textContent='Processing…';progressWrap.style.display='block';setProgress(6);resSize.style.color='var(--text)';resRatio.style.color='var(--success)';try{const t=formatSelect.value||'webp',e={removeBg:bgRemove.classList.contains('active'),bgColor:bgColorToggle.checked?bgColorPicker.value:null,progressCallback:setProgress};let o;if(prioritySizeBtn.classList.contains('active')){const i=Math.max(1,Math.round(Number(targetSizeInput.value)||0))*1024;o=await compressToTargetWithScale(i,t,e);if(o.size>i){showTemporaryNote('Could not meet target size.',4000);resSize.style.color='var(--danger)';resRatio.style.color='var(--danger)'}}else{const i=parseInt(qualitySlider.value,10)/100;o=await compressWithQualityPriority(i,t,e)}if(!o)throw new Error('Compression failed.');processedBlob=o;displayResult(o)}catch(t){resPlaceholder.textContent='Error: '+(t.message||t);if(tg?.HapticFeedback)tg.HapticFeedback.notificationOccurred('error')}finally{processBtn.disabled=false;setTimeout(()=>{progressWrap.style.display='none';setProgress(0)},700)}}
+    async function compressWithQualityPriority(t,e,o){o.progressCallback(25);return await encodeCanvasBitmap(originalBitmap,originalBitmap.width,originalBitmap.height,e,t,o)}
+    async function compressToTargetWithScale(t,e,o){const{progressCallback:i}=o,r=originalBitmap.width,n=originalBitmap.height;i(20);let a=await binarySearchQuality(originalBitmap,r,n,t,e,o);if(a&&a.size<=t)return a;let s=.95;for(let l=0;l<15;l++){i(30+Math.min(60,4*l));const c=Math.max(1,Math.round(r*s)),d=Math.max(1,Math.round(n*s)),p=await binarySearchQuality(originalBitmap,c,d,t,e,o);if(p&&(a&&p.size>=a.size||(a=p)),a&&a.size<=t)return a;if(c<=128||d<=128)break;const u=a?a.size/t:2;s*=.9<u?1.5:.85}if(a)return a;throw new Error('Could not generate an image.')}
+    async function binarySearchQuality(t,e,o,i,r,n){if('png'===r)return await encodeCanvasBitmap(t,e,o,r,.9,n);let a,s=.01,l=1;for(let c=0;c<8;c++){const d=(s+l)/2,p=await encodeCanvasBitmap(t,e,o,r,d,n);if(!p)break;p.size<=i?(a=p,s=d):l=d}return a}
+    async function encodeCanvasBitmap(t,e,o,i,r=.9,n={}){const{bgColor:a=null,removeBg:s=!1}=n,l=document.createElement('canvas');l.width=e,l.height=o;const c=l.getContext('2d');if(a&&!s&&(c.fillStyle=a,c.fillRect(0,0,e,o)),c.drawImage(t,0,0,e,o),s)try{const d=c.getImageData(0,0,e,o);let p=0,u=0,m=0;[[0,0],[e-1,0],[0,o-1],[e-1,o-1]].forEach(([t,i])=>{const r=(i*e+t)*4;p+=d.data[r],u+=d.data[r+1],m+=d.data[r+2]}),p/=4,u/=4,m/=4;const g=30;for(let f=0;f<d.data.length;f+=4)Math.abs(d.data[f]-p)<g&&Math.abs(d.data[f+1]-u)<g&&Math.abs(d.data[f+2]-m)<g&&(d.data[f+3]=0);c.putImageData(d,0,0)}catch(t){}const h='jpeg'===i?'image/jpeg':'png'===i?'image/png':'image/webp';return new Promise(t=>l.toBlob(t,h,r))}
+    function coreDisplayResult(t){if(currentObjectURL)URL.revokeObjectURL(currentObjectURL);currentObjectURL=URL.createObjectURL(t);resImg.src=currentObjectURL;resImg.style.display='block';resPlaceholder.style.display='none';resSize.textContent=(t.size/1024).toFixed(1)+' KB';resType.textContent=t.type.replace('image/','').toUpperCase();const e=(origFile.size-t.size)/origFile.size*100;resRatio.textContent=(e>-Infinity?e.toFixed(1):0)+'%';downloadBtn.disabled=false;setProgress(100)}
+    function coreDownloadResult(){if(!processedBlob||!origFile)return;let t;const e=(origFile.name.split('.').slice(0,-1).join('')||'image').replace(/[^a-zA-Z0-9]/g,'-'),o=formatSelect.value==='jpeg'?'jpg':formatSelect.value;if(prioritySizeBtn.classList.contains('active'))t=`${e}-Compressed-${targetSizeInput.value}KB.${o}`;else{let i=tg?.initDataUnsafe?.user?.first_name||'';i=i.replace(/[^a-zA-Z0-9]/g,'');t=i?`${e}-for-${i}-Q${qualitySlider.value}.${o}`:`${e}-Compressed-Q${qualitySlider.value}.${o}`}const i=document.createElement('a');i.href=URL.createObjectURL(processedBlob);i.download=t;i.click();i.remove();URL.revokeObjectURL(i.href)}
+    function clearResult(){processedBlob=null;resImg.src='';resImg.style.display='none';resPlaceholder.style.display='block';resPlaceholder.textContent='Awaiting compression';resSize.textContent='—';resType.textContent='—';resRatio.textContent='—';downloadBtn.disabled=true;resSize.style.color='var(--text)';resRatio.style.color='var(--success)'}
+    function setProgress(t){progress.style.width=Math.max(0,Math.min(100,t))+'%'}
+    function showTemporaryNote(t,e=3000){const o=document.createElement('div');o.textContent=t;o.style.cssText="position:fixed;left:50%;transform:translateX(-50%);bottom:28px;background:#222;backdrop-filter:blur(5px);color:white;padding:10px 16px;border-radius:8px;font-size:14px;z-index:9999;font-family:'Karma',system-ui,sans-serif;border:1px solid var(--stroke);";document.body.appendChild(o);setTimeout(()=>o.remove(),e)}
 
-    // --- Wrap Core Functions for Telegram ---
-    processImage = async () => {
-        tg.MainButton.showProgress(false).disable();
-        await coreProcessImage();
-        tg.MainButton.hideProgress();
-    };
-    displayResult = (result) => {
-        coreDisplayResult(result);
-        downloadBtn.style.display = 'block'; // Show download button inside app
-        tg.MainButton.setText("Done & Close").enable().onClick(() => tg.close());
-        tg.HapticFeedback.notificationOccurred('success');
-    };
-    downloadResult = () => {
-        tg.HapticFeedback.impactOccurred('light');
-        coreDownloadResult();
-    };
-  }
-}
+    // --- PWA & TELEGRAM INITIALIZATION ---
+    function initializeTelegramIntegration() {
+        if (tg && tg.platform !== 'unknown') {
+            tg.ready();
+            tg.expand(); // Make the Mini App full-screen
 
-function setupPWA(){const t='M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4 M17 8l-5-5-5 5 M12 3v12',e=e=>{const o=document.createElement('canvas');o.width=e,o.height=e;const i=o.getContext('2d');return i.scale(e/24,e/24),i.strokeStyle='#f0f0f0',i.lineWidth=1.5,i.lineCap='round',i.lineJoin='round',i.stroke(new Path2D(t)),o.toDataURL('image/png')},o={name:"Photo Compressor",short_name:"Compressor",description:"A privacy-first, offline-capable image compressor.",start_url:location.href.split('?')[0],display:"standalone",background_color:"#111111",theme_color:"#111111",icons:[{src:e(192),sizes:"192x192",type:"image/png"},{src:e(512),sizes:"512x512",type:"image/png"}]};const i=URL.createObjectURL(new Blob([JSON.stringify(o)],{type:'application/json'}));document.head.insertAdjacentHTML('beforeend',`<link rel="manifest" href="${i}">`),document.head.insertAdjacentHTML('beforeend',`<link rel="icon" href="${e(32)}">`);const r=`\n    const CACHE_NAME = 'compressor-cache-v1';\n    const urlsToCache = ['${location.href}'];\n    self.addEventListener('install', event => {\n      event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(urlsToCache)));\n    });\n    self.addEventListener('fetch', event => {\n      event.respondWith(caches.match(event.request).then(response => response || fetch(event.request)));\n    });\n  `,n=URL.createObjectURL(new Blob([r],{type:'application/javascript'}));'serviceWorker'in navigator&&navigator.serviceWorker.register(n)}
+            const setTheme = () => { document.body.style.backgroundColor = tg.themeParams.bg_color || '#111111'; };
+            tg.onEvent('themeChanged', setTheme);
+            setTheme();
 
-// --- App Initialization on Load ---
-window.addEventListener('load',()=>{initializeTelegramIntegration();setupPWA();let t;window.addEventListener('beforeinstallprompt',e=>{!tg?.platform&&'unknown'!==tg?.platform&&(e.preventDefault(),t=e,installBtn.style.display='block')}),installBtn.addEventListener('click',async()=>{t&&(t.prompt(),await t.userChoice,t=null)})});
+            processBtn.style.display = 'none'; // Hide original HTML button
+            tg.MainButton.setText("Select an Image").disable().show();
+            tg.onEvent('mainButtonClicked', () => { tg.HapticFeedback.impactOccurred('medium'); processImage(); });
 
-// --- Event Listeners ---
-dropArea.addEventListener('click',()=>fileInput.click()),fileInput.addEventListener('change',t=>t.target.files&&t.target.files[0]&&setOriginalFile(t.target.files[0])),dropArea.addEventListener('dragover',t=>{t.preventDefault(),dropArea.classList.add('drag')}),dropArea.addEventListener('dragleave',t=>{dropArea.classList.remove('drag')}),dropArea.addEventListener('drop',t=>{t.preventDefault(),dropArea.classList.remove('drag'),t.dataTransfer.files[0]&&setOriginalFile(t.dataTransfer.files[0])}),processBtn.addEventListener('click',processImage),downloadBtn.addEventListener('click',downloadResult),qualitySlider.addEventListener('input',()=>{qualityValue.textContent=qualitySlider.value}),prioritySizeBtn.addEventListener('click',()=>setPriority('size')),priorityQualityBtn.addEventListener('click',()=>setPriority('quality')),formatSelect.addEventListener('change',handleFormatChange),bgRemove.addEventListener('click',()=>bgRemove.classList.toggle('active'));
+            // Wrap core functions to add Telegram-specific UI feedback
+            processImage = async () => {
+                tg.MainButton.showProgress(false).disable();
+                await coreProcessImage();
+                tg.MainButton.hideProgress();
+            };
+            displayResult = (result) => {
+                coreDisplayResult(result);
+                downloadBtn.style.display = 'block'; // Show our HTML download button
+                tg.MainButton.setText("Done & Close").enable().onClick(() => tg.close());
+                tg.HapticFeedback.notificationOccurred('success');
+            };
+            downloadResult = () => {
+                tg.HapticFeedback.impactOccurred('light');
+                coreDownloadResult();
+            };
+        }
+    }
+
+    function setupPWA(){const t='M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4 M17 8l-5-5-5 5 M12 3v12',e=e=>{const o=document.createElement('canvas');o.width=e,o.height=e;const i=o.getContext('2d');return i.scale(e/24,e/24),i.strokeStyle='#f0f0f0',i.lineWidth=1.5,i.lineCap='round',i.lineJoin='round',i.stroke(new Path2D(t)),o.toDataURL('image/png')},o={name:"Photo Compressor",short_name:"Compressor",description:"A privacy-first, offline-capable image compressor.",start_url:location.href.split('?')[0],display:"standalone",background_color:"#111111",theme_color:"#111111",icons:[{src:e(192),sizes:"192x192",type:"image/png"},{src:e(512),sizes:"512x512",type:"image/png"}]};const i=URL.createObjectURL(new Blob([JSON.stringify(o)],{type:'application/json'}));document.head.insertAdjacentHTML('beforeend',`<link rel="manifest" href="${i}">`),document.head.insertAdjacentHTML('beforeend',`<link rel="icon" href="${e(32)}">`);const r=`\n    const CACHE_NAME = 'compressor-cache-v1';\n    const urlsToCache = ['${location.href}'];\n    self.addEventListener('install', event => {\n      event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(urlsToCache)));\n    });\n    self.addEventListener('fetch', event => {\n      event.respondWith(caches.match(event.request).then(response => response || fetch(event.request)));\n    });\n  `,n=URL.createObjectURL(new Blob([r],{type:'application/javascript'}));'serviceWorker'in navigator&&navigator.serviceWorker.register(n)}
+
+    window.addEventListener('load', () => {
+        initializeTelegramIntegration();
+        setupPWA();
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', e => {
+            if (!tg || tg.platform === 'unknown') {
+                e.preventDefault();
+                deferredPrompt = e;
+                installBtn.style.display = 'block';
+            }
+        });
+        installBtn.addEventListener('click', async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                await deferredPrompt.userChoice;
+                deferredPrompt = null;
+            }
+        });
+    });
 </script>
 </body>
 </html>
