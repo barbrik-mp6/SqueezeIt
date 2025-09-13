@@ -1,0 +1,271 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Photo Compressor — Privacy First</title>
+<!-- PWA Theme Color -->
+<meta name="theme-color" content="#111111">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Karma:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #111111; --card: #1a1a1a; --text: #f0f0f0; --muted: #888888;
+    --accent: #8A63D2; --stroke: #2f2f2f; --success: #34d399; --danger: #f47174;
+    --space-xs: 4px; --space-sm: 8px; --space-md: 16px;
+    --space-lg: 24px; --space-xl: 32px; --space-xxl: 48px;
+    --radius: 12px;
+  }
+  html { color-scheme: dark; }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; font-family: 'Karma', system-ui, sans-serif;
+    background: var(--bg); color: var(--text);
+    -webkit-font-smoothing:antialiased;
+    padding: var(--space-xxl);
+  }
+  .app{ max-width:1600px; margin:0 auto; }
+  header{ display:flex; gap: var(--space-md); align-items:center; margin-bottom: var(--space-xxl); }
+  .logo { width:48px; height:48px; border-radius:10px; background:var(--accent); display:flex; align-items:center; justify-content:center; flex:0 0 48px; }
+  .logo svg{width:26px; height:26px;}
+  h1{font-size:22px; margin:0; font-weight: 700;}
+  p.lead{margin:0;color:var(--muted);font-size:15px; font-weight: 400;}
+  .grid{ display:grid; grid-template-columns: minmax(360px, 420px) 1fr 1fr; gap: var(--space-lg); align-items:start; }
+  .card{ background:var(--card); border-radius:var(--radius); padding: var(--space-lg); border: 1px solid var(--stroke); }
+  .card-header{ display:flex; justify-content:space-between; align-items:center; font-size: 16px; font-weight: 600; }
+  .control-group { margin-bottom: var(--space-lg); }
+  .control-group:last-child { margin-bottom: 0; }
+  label{display:block; font-size:15px; color:var(--muted); margin-bottom:var(--space-sm); font-weight:400;}
+  input[type="number"], select{ width:100%; padding: 12px var(--space-md); border-radius: var(--space-sm); border: 1px solid var(--stroke); background: var(--bg); color:var(--text); font-size:16px; font-family: 'Karma', system-ui, sans-serif; transition: border-color .2s ease; }
+  input[type="number"]:focus, select:focus { border-color: var(--accent); outline: none; }
+  select option { background: var(--bg); color: var(--text); }
+  .chip-group{display:flex;gap:var(--space-sm);}
+  .chip{ padding:var(--space-sm) 12px; border-radius: var(--radius); background:var(--bg); font-size:14px; cursor:pointer; border:1px solid var(--stroke); transition: all .2s ease; user-select: none; }
+  .chip:hover { border-color:var(--muted); }
+  .chip.active{ background:var(--accent); border-color:var(--accent); color:white; font-weight:600; }
+  .slider-container { display: flex; align-items: center; gap: var(--space-md); }
+  input[type="range"] { -webkit-appearance: none; appearance: none; width: 100%; height: 6px; background: var(--stroke); border-radius: 6px; outline: none; padding: 0; }
+  input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 18px; height: 18px; background: var(--text); cursor: pointer; border-radius: 50%; border: 2px solid var(--card); transition: background .2s ease; }
+  input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; background: var(--text); cursor: pointer; border-radius: 50%; border: 2px solid var(--card); }
+  input[type="range"]:hover::-webkit-slider-thumb { background: var(--accent); }
+  #qualityValue { font-weight:600; font-size: 16px; min-width: 40px; text-align: right; }
+  .color-control { display:flex; align-items:center; gap:var(--space-sm); }
+  input[type="checkbox"] { display: none; }
+  .checkbox-label { width: 18px; height: 18px; border: 2px solid var(--stroke); border-radius: 4px; display: inline-block; cursor: pointer; transition: all .2s ease; }
+  input[type="checkbox"]:checked + .checkbox-label { background-color: var(--accent); border-color: var(--accent); }
+  input[type="color"] { -webkit-appearance: none; -moz-appearance: none; appearance: none; width: 32px; height: 32px; background-color: transparent; border: none; cursor: pointer; padding: 0; border-radius: 8px; overflow: hidden; }
+  input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; border-radius: 8px; }
+  input[type="color"]::-webkit-color-swatch { border: 2px solid var(--stroke); border-radius: 8px; }
+  .actions{display:flex; flex-direction: column; gap:var(--space-sm); margin-top:var(--space-lg);}
+  .btn { width: 100%; padding:14px; border-radius:var(--space-sm); cursor:pointer; font-weight:600; font-size:15px; font-family: 'Karma', system-ui, sans-serif; transition: all .2s ease; }
+  .btn-primary { border:0; background:var(--accent); color:white; }
+  .btn-primary:hover { background: #714db2; }
+  .btn-secondary { background:transparent; border:1px solid var(--stroke); color:var(--text); }
+  .btn-secondary:hover { border-color: var(--muted); background: rgba(255,255,255,0.05); }
+  .btn:disabled{opacity:.4; cursor:not-allowed; background: var(--stroke); border-color: var(--stroke);}
+  .drop{ border:2px dashed var(--stroke); border-radius:var(--radius); padding:var(--space-xxl) var(--space-lg); text-align:center; cursor:pointer; transition:all .2s ease; }
+  .drop.drag, .drop:hover { border-color:var(--accent); background: #151515; }
+  .drop .big{ display:flex; align-items:center; justify-content:center; gap:var(--space-sm);color:var(--text);font-weight:600;font-size:16px; }
+  .muted{color:var(--muted);font-size:14px;margin-top:var(--space-sm)}
+  .preview-card img{ width:100%; border-radius:var(--radius); display:block; object-fit:contain; max-height:520px; }
+  .preview-wrapper{ background: var(--bg); padding:var(--space-md); border-radius:var(--radius); display:flex;align-items:center;justify-content:center;min-height:350px; }
+  .meta{ display:flex; justify-content:space-between; gap:var(--space-md); margin-top: var(--space-md); }
+  .meta > div { flex: 1; background: var(--bg); padding: var(--space-sm) 12px; border-radius: var(--space-sm); }
+  .meta .value { font-weight: 600; color: var(--text); font-size: 15px; margin-top: var(--space-xs); }
+  .notes-section { margin-top: var(--space-lg); }
+  .notes-section ul { margin: var(--space-sm) 0 0 var(--space-md); color:var(--muted); padding:0; font-size: 14px; }
+  footer{margin-top:var(--space-lg);color:var(--muted);font-size:13px; text-align: center;}
+  @media (max-width:1100px){ body { padding: var(--space-lg); } .grid{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="logo">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" stroke="white" stroke-width="2" stroke-linecap="round"/><path d="M17 8l-5-5-5 5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 3v12" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <div>
+        <h1>Photo Compressor</h1>
+        <p class="lead">Optimized for quality, privacy, and performance.</p>
+      </div>
+    </header>
+
+    <main class="grid">
+      <!-- === CONTROL PANEL === -->
+      <section class="card">
+        <div class="control-group">
+          <div id="dropArea" class="drop" tabindex="0">
+            <div class="big">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" stroke="currentColor" stroke-width="2"/><path d="M17 8l-5-5-5 5M12 3v12" stroke="currentColor" stroke-width="2"/></svg>
+              Drop Image or Click
+            </div>
+            <div class="muted">100% private and offline.</div>
+            <input id="fileInput" type="file" accept="image/jpeg, image/png, image/webp, image/gif, image/bmp" style="display:none" />
+          </div>
+        </div>
+        <div class="control-group">
+          <label>Compression Priority</label>
+          <div class="chip-group">
+            <div id="prioritySize" class="chip active" role="button">File Size</div><div id="priorityQuality" class="chip" role="button">Quality</div>
+          </div>
+        </div>
+        <div id="sizePriorityControls" class="control-group"><label for="targetSize">Target Size (KB)</label><input id="targetSize" type="number" min="1" value="500" /></div>
+        <div id="qualityPriorityControls" class="control-group" style="display:none;"><label for="qualitySlider">Quality</label><div class="slider-container"><input id="qualitySlider" type="range" min="1" max="100" value="85"><span id="qualityValue">85</span></div></div>
+        <div class="control-group"><label for="format">Output Format</label><select id="format"><option value="webp">WebP (Recommended)</option><option value="jpeg">JPEG</option><option value="png">PNG (Best for Graphics)</option></select></div>
+        <div class="control-group">
+          <label>Background</label>
+          <div class="chip-group"><div id="bgRemove" class="chip" role="button">Remove</div><div class="color-control"><input type="checkbox" id="bgColorToggle"><label class="checkbox-label" for="bgColorToggle"></label><label for="bgColorToggle" style="margin-bottom:0; cursor: pointer;">Fill</label><input type="color" id="bgColorPicker" value="#FFFFFF"></div></div>
+        </div>
+        <div class="actions">
+          <button id="processBtn" class="btn btn-primary">Compress Image</button>
+          <button id="downloadBtn" class="btn btn-secondary" disabled>Download</button>
+          <button id="installBtn" class="btn btn-secondary" style="display: none;">Download App</button>
+        </div>
+        <div id="progressWrap" style="display:none; margin-top: var(--space-md); height: 6px; background: var(--stroke); border-radius: 6px; overflow: hidden;"><div id="progress" style="height:100%;width:0;background:var(--accent);transition:width .2s linear"></div></div>
+      </section>
+      <!-- === ORIGINAL PREVIEW === -->
+      <section class="card"><div class="card-header"><div>Original</div><div id="origType" class="muted">—</div></div><div class="preview-wrapper" style="margin-top: var(--space-md);"><img id="origImg" alt="Original preview" style="display:none" /><div id="origPlaceholder" class="muted">No image selected</div></div><div class="meta"><div><span class="muted">Size</span><div id="origSize" class="value">—</div></div><div><span class="muted">Dimensions</span><div id="origDims" class="value">—</div></div></div></section>
+      <!-- === RESULT PREVIEW === -->
+      <section class="card"><div class="card-header"><div>Result</div><div id="resType" class="muted">—</div></div><div class="preview-wrapper" style="margin-top: var(--space-md);"><img id="resImg" alt="Result preview" style="display:none" /><div id="resPlaceholder" class="muted">Awaiting compression</div></div><div class="meta"><div><span class="muted">New Size</span><div id="resSize" class="value">—</div></div><div><span class="muted">Savings</span><div id="resRatio" class="value" style="color:var(--success)">—</div></div></div></section>
+    </main>
+    <footer class="notes-section muted">This is a single-file, installable web application. Your data never leaves your computer.</footer>
+  </div>
+
+<script>
+/*
+  V8 LOGIC (PWA Edition):
+  - Main compression logic is unchanged from the robust V6/V7.
+  - This script now includes PWA registration.
+  - A Service Worker and Web App Manifest are dynamically created and registered from strings.
+  - Icons are generated on-the-fly using a canvas to keep it a single-file app.
+  - An install button appears when the app is eligible for PWA installation.
+*/
+
+const $ = (id) => document.getElementById(id);
+let currentObjectURL = null, processedBlob = null, origFile = null, originalBitmap = null;
+
+const dropArea=$('dropArea'),fileInput=$('fileInput'),processBtn=$('processBtn'),downloadBtn=$('downloadBtn');
+const progress=$('progress'),progressWrap=$('progressWrap');
+const origImg=$('origImg'),origPlaceholder=$('origPlaceholder'),origSize=$('origSize'),origDims=$('origDims'),origType=$('origType');
+const resImg=$('resImg'),resPlaceholder=$('resPlaceholder'),resSize=$('resSize'),resRatio=$('resRatio'),resType=$('resType');
+const targetSizeInput=$('targetSize'),formatSelect=$('format');
+const prioritySizeBtn=$('prioritySize'),priorityQualityBtn=$('priorityQuality');
+const sizePriorityControls=$('sizePriorityControls'),qualityPriorityControls=$('qualityPriorityControls');
+const qualitySlider=$('qualitySlider'),qualityValue=$('qualityValue');
+const bgRemove=$('bgRemove'),bgColorToggle=$('bgColorToggle'),bgColorPicker=$('bgColorPicker');
+const installBtn = $('installBtn');
+
+dropArea.addEventListener('click',()=>fileInput.click());
+fileInput.addEventListener('change',e=>e.target.files&&e.target.files[0]&&setOriginalFile(e.target.files[0]));
+dropArea.addEventListener('dragover',e=>{e.preventDefault();dropArea.classList.add('drag');});
+dropArea.addEventListener('dragleave',e=>{dropArea.classList.remove('drag');});
+dropArea.addEventListener('drop',e=>{e.preventDefault();dropArea.classList.remove('drag');e.dataTransfer.files[0]&&setOriginalFile(e.dataTransfer.files[0]);});
+processBtn.addEventListener('click',processImage);
+downloadBtn.addEventListener('click',downloadResult);
+qualitySlider.addEventListener('input',()=>{qualityValue.textContent=qualitySlider.value;});
+prioritySizeBtn.addEventListener('click',()=>setPriority('size'));
+priorityQualityBtn.addEventListener('click',()=>setPriority('quality'));
+formatSelect.addEventListener('change',handleFormatChange);
+bgRemove.addEventListener('click',()=>bgRemove.classList.toggle('active'));
+
+function setPriority(mode){const isSize=mode==='size';prioritySizeBtn.classList.toggle('active',isSize);priorityQualityBtn.classList.toggle('active',!isSize);sizePriorityControls.style.display=isSize?'block':'none';qualityPriorityControls.style.display=isSize?'none':'block';handleFormatChange();}
+function handleFormatChange(){const isQualityPriority=priorityQualityBtn.classList.contains('active');const isPNG=formatSelect.value==='png';qualitySlider.disabled=isQualityPriority&&isPNG;qualityValue.style.opacity=qualitySlider.disabled?0.5:1;}
+async function setOriginalFile(file){if(originalBitmap){originalBitmap.close();originalBitmap=null;}try{originalBitmap=await createImageBitmap(file);}catch(err){showTemporaryNote("Error: Unsupported or corrupt file.",4000);return;}origFile=file;if(currentObjectURL)URL.revokeObjectURL(currentObjectURL);currentObjectURL=URL.createObjectURL(file);origImg.src=currentObjectURL;origImg.style.display='block';origPlaceholder.style.display='none';origSize.textContent=(file.size/1024).toFixed(1)+' KB';origType.textContent=file.type.replace('image/','').toUpperCase()||'IMAGE';origDims.textContent=originalBitmap.width+'×'+originalBitmap.height;clearResult();}
+async function processImage(){if(!origFile||!originalBitmap){alert('Please choose a valid image first');return;}processBtn.disabled=true;downloadBtn.disabled=true;processedBlob=null;resImg.style.display='none';resPlaceholder.textContent='Processing…';progressWrap.style.display='block';setProgress(6);resSize.style.color='var(--text)';resRatio.style.color='var(--success)';try{const outFormat=formatSelect.value||'webp';const opts={removeBg:bgRemove.classList.contains('active'),bgColor:bgColorToggle.checked?bgColorPicker.value:null,progressCallback:setProgress};let result;if(prioritySizeBtn.classList.contains('active')){const targetBytes=Math.max(1,Math.round(Number(targetSizeInput.value)||0))*1024;result=await compressToTargetWithScale(targetBytes,outFormat,opts);if(result.size>targetBytes){showTemporaryNote(`Could not meet target size.`,4000);resSize.style.color='var(--danger)';resRatio.style.color='var(--danger)';}}else{const quality=parseInt(qualitySlider.value,10)/100;result=await compressWithQualityPriority(quality,outFormat,opts);}if(!result)throw new Error('Compression failed.');processedBlob=result;displayResult(result);}catch(err){resPlaceholder.textContent='Error: '+(err.message||err);}finally{processBtn.disabled=false;setTimeout(()=>{progressWrap.style.display='none';setProgress(0);},700);}}
+async function compressWithQualityPriority(quality,outputFormat,options){options.progressCallback(25);const blob=await encodeCanvasBitmap(originalBitmap,originalBitmap.width,originalBitmap.height,outputFormat,quality,options);options.progressCallback(90);if(!blob)throw new Error("Encoding failed at the selected quality.");return blob;}
+async function compressToTargetWithScale(targetBytes,outputFormat,options){const{progressCallback}=options;const width=originalBitmap.width,height=originalBitmap.height;progressCallback(20);let bestBlob=await binarySearchQuality(originalBitmap,width,height,targetBytes,outputFormat,options);if(bestBlob&&bestBlob.size<=targetBytes)return bestBlob;let scaleFactor=0.95;for(let attempt=0;attempt<15;attempt++){progressCallback(30+Math.min(60,attempt*4));const scaledW=Math.max(1,Math.round(width*scaleFactor)),scaledH=Math.max(1,Math.round(height*scaleFactor));const currentBlob=await binarySearchQuality(originalBitmap,scaledW,scaledH,targetBytes,outputFormat,options);if(currentBlob){if(!bestBlob||(currentBlob.size<bestBlob.size))bestBlob=currentBlob;}if(bestBlob&&bestBlob.size<=targetBytes)return bestBlob;if(scaledW<=128||scaledH<=128)break;const distance=bestBlob?bestBlob.size/targetBytes:2;scaleFactor*=(distance>1.5)?0.85:0.95;}if(bestBlob)return bestBlob;throw new Error('Could not generate an image.');}
+async function binarySearchQuality(bitmap,w,h,targetBytes,outputFormat,options){if(outputFormat==='png')return await encodeCanvasBitmap(bitmap,w,h,outputFormat,0.9,options);let low=0.01,high=1.0,bestUnder=null,bestOver=null;for(let i=0;i<8;i++){const q=(low+high)/2;const blob=await encodeCanvasBitmap(bitmap,w,h,outputFormat,q,options);if(!blob)break;if(blob.size<=targetBytes){bestUnder=blob;low=q;}else{bestOver=blob;high=q;}}return bestUnder||bestOver;}
+async function encodeCanvasBitmap(bitmap,width,height,outputFormat,quality=0.9,opts={}){const{bgColor=null,removeBg=false}=opts;const canvas=document.createElement('canvas');canvas.width=width;canvas.height=height;const ctx=canvas.getContext('2d');if(bgColor&&!removeBg){ctx.fillStyle=bgColor;ctx.fillRect(0,0,width,height);}ctx.drawImage(bitmap,0,0,width,height);if(removeBg){try{const data=ctx.getImageData(0,0,width,height);let r=0,g=0,b=0;[[0,0],[width-1,0],[0,height-1],[width-1,height-1]].forEach(([x,y])=>{const i=(y*width+x)*4;r+=data.data[i];g+=data.data[i+1];b+=data.data[i+2];});r/=4;g/=4;b/=4;const tol=30;for(let i=0;i<data.data.length;i+=4){if(Math.abs(data.data[i]-r)<tol&&Math.abs(data.data[i+1]-g)<tol&&Math.abs(data.data[i+2]-b)<tol){data.data[i+3]=0;}}ctx.putImageData(data,0,0);}catch(err){}}const mime=outputFormat==='jpeg'?'image/jpeg':outputFormat==='png'?'image/png':'image/webp';return new Promise(resolve=>canvas.toBlob(resolve,mime,quality));}
+function displayResult(result){if(currentObjectURL)URL.revokeObjectURL(currentObjectURL);currentObjectURL=URL.createObjectURL(result);resImg.src=currentObjectURL;resImg.style.display='block';resPlaceholder.style.display='none';resSize.textContent=(result.size/1024).toFixed(1)+' KB';resType.textContent=result.type.replace('image/','').toUpperCase();const ratio=((origFile.size-result.size)/origFile.size*100);resRatio.textContent=(ratio>-Infinity?ratio.toFixed(1):0)+'%';downloadBtn.disabled=false;setProgress(100);}
+function downloadResult(){if(!processedBlob||!origFile)return;const nameWithoutExt=origFile.name.split('.').slice(0,-1).join('.')||'image';const ext=formatSelect.value==='jpeg'?'jpg':formatSelect.value;let newFilename;if(prioritySizeBtn.classList.contains('active')){newFilename=`${nameWithoutExt}-Compressed-${targetSizeInput.value}KB.${ext}`;}else{newFilename=`${nameWithoutExt}-Compressed-Q${qualitySlider.value}.${ext}`;}const link=document.createElement('a');link.href=URL.createObjectURL(processedBlob);link.download=newFilename;link.click();link.remove();URL.revokeObjectURL(link.href);}
+function clearResult(){processedBlob=null;resImg.src='';resImg.style.display='none';resPlaceholder.style.display='block';resPlaceholder.textContent='Awaiting compression';resSize.textContent='—';resType.textContent='—';resRatio.textContent='—';downloadBtn.disabled=true;resSize.style.color='var(--text)';resRatio.style.color='var(--success)';}
+function setProgress(n){progress.style.width=Math.max(0,Math.min(100,n))+'%';}
+function showTemporaryNote(msg,ms=3000){const note=document.createElement('div');note.textContent=msg;note.style.cssText="position:fixed;left:50%;transform:translateX(-50%);bottom:28px;background: #222; backdrop-filter:blur(5px);color:white;padding:10px 16px;border-radius:8px;font-size:14px;z-index:9999;font-family:'Karma',system-ui,sans-serif; border: 1px solid var(--stroke);";document.body.appendChild(note);setTimeout(()=>note.remove(),ms);}
+
+// --- PWA Installation Logic ---
+window.addEventListener('load', () => {
+  setupPWA();
+  let deferredPrompt;
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    installBtn.style.display = 'block';
+  });
+  installBtn.addEventListener('click', async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        installBtn.style.display = 'none';
+      }
+      deferredPrompt = null;
+    }
+  });
+});
+
+async function setupPWA() {
+  // --- 1. Dynamic Icon & Manifest Generation ---
+  // Lucide "Shrink" icon SVG path
+  const lucideIconPath = 'M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4 M17 8l-5-5-5 5 M12 3v12';
+  
+  const generateIcon = (size) => {
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    const stroke = size / 12;
+    const padding = size / 6;
+    ctx.scale(size / 24, size / 24); // Scale to a 24x24 grid
+    ctx.strokeStyle = '#f0f0f0';
+    ctx.lineWidth = 1.5;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    const path = new Path2D(lucideIconPath);
+    ctx.stroke(path);
+    return canvas.toDataURL('image/png');
+  };
+
+  const manifest = {
+    name: "Photo Compressor",
+    short_name: "Compressor",
+    description: "A privacy-first, offline-capable image compressor.",
+    start_url: location.href.split('?')[0],
+    display: "standalone",
+    background_color: "#111111",
+    theme_color: "#111111",
+    icons: [
+      { src: generateIcon(192), sizes: "192x192", type: "image/png" },
+      { src: generateIcon(512), sizes: "512x512", type: "image/png" }
+    ]
+  };
+
+  const manifestBlob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+  const manifestUrl = URL.createObjectURL(manifestBlob);
+  document.head.insertAdjacentHTML('beforeend', `<link rel="manifest" href="${manifestUrl}">`);
+  document.head.insertAdjacentHTML('beforeend', `<link rel="icon" href="${generateIcon(32)}">`);
+
+  // --- 2. Service Worker Registration ---
+  const swCode = `
+    const CACHE_NAME = 'compressor-cache-v1';
+    const urlsToCache = ['${location.href}'];
+    self.addEventListener('install', event => {
+      event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(urlsToCache)));
+    });
+    self.addEventListener('fetch', event => {
+      event.respondWith(caches.match(event.request).then(response => response || fetch(event.request)));
+    });
+  `;
+  const swBlob = new Blob([swCode], { type: 'application/javascript' });
+  const swUrl = URL.createObjectURL(swBlob);
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register(swUrl)
+      .then(reg => console.log('Service Worker registered successfully.'))
+      .catch(err => console.error('Service Worker registration failed:', err));
+  }
+}
+</script>
+</body>
+</html>
